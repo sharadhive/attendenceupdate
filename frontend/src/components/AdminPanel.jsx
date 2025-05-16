@@ -22,7 +22,7 @@ function AdminPanel() {
     try {
       const decoded = jwtDecode(token);
       return decoded.exp * 1000 > Date.now();
-    } catch (err) {
+    } catch {
       return false;
     }
   };
@@ -52,7 +52,6 @@ function AdminPanel() {
       setBranchName(decoded.name);
       fetchEmployees(decoded.name, token);
     } catch (err) {
-      console.error(err);
       alert('Login failed: ' + (err.response?.data?.message || err.message));
     }
   };
@@ -73,48 +72,43 @@ function AdminPanel() {
       });
       setEmployees(res.data);
     } catch (err) {
-      console.error("Error fetching employees", err);
       alert('Failed to fetch employees');
     }
   };
 
   const createBranch = async () => {
     try {
-      await axios.post("http://localhost:5000/api/admin/register-branch", {
+      await axios.post('http://localhost:5000/api/admin/register-branch', {
         branchName: newBranchName,
         password: newBranchPassword,
       }, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      alert("Branch created successfully");
-      setNewBranchName("");
-      setNewBranchPassword("");
+      alert('Branch created successfully');
+      setNewBranchName('');
+      setNewBranchPassword('');
     } catch (err) {
-      console.error(err);
-      alert("Branch creation failed: " + (err.response?.data?.message || err.message));
+      alert('Branch creation failed: ' + (err.response?.data?.message || err.message));
     }
   };
 
-const createEmployee = async () => {
-  try {
-    await axios.post('http://localhost:5000/api/admin/create-employee', {
-      email: newEmpEmail,
-      password: newEmpPassword,
-      branch: branchName, // ✅ Correct key now
-    }, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    alert('Employee created');
-    fetchEmployees(branchName, token);
-    setNewEmpEmail('');
-    setNewEmpPassword('');
-  } catch (err) {
-    console.error(err);
-    alert('Failed to create employee: ' + (err.response?.data?.message || err.message));
-  }
-};
-
-
+  const createEmployee = async () => {
+    try {
+      await axios.post('http://localhost:5000/api/admin/create-employee', {
+        email: newEmpEmail,
+        password: newEmpPassword,
+        branch: branchName,
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      alert('Employee created');
+      fetchEmployees(branchName, token);
+      setNewEmpEmail('');
+      setNewEmpPassword('');
+    } catch (err) {
+      alert('Failed to create employee: ' + (err.response?.data?.message || err.message));
+    }
+  };
 
   const viewAttendance = async (empId) => {
     const newId = activeEmployeeId === empId ? null : empId;
@@ -123,11 +117,10 @@ const createEmployee = async () => {
 
     try {
       const res = await axios.get(`http://localhost:5000/api/admin/attendance/${empId}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       setSelectedEmployeeAttendance(prev => ({ ...prev, [empId]: res.data }));
-    } catch (err) {
-      console.error(err);
+    } catch {
       alert('Failed to load attendance');
     }
   };
@@ -137,6 +130,35 @@ const createEmployee = async () => {
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance');
     XLSX.writeFile(workbook, filename);
+  };
+
+  const updateAttendance = async (empId, recordId, status, remarks) => {
+    try {
+      await axios.put(`http://localhost:5000/api/admin/attendance/${recordId}`, {
+        status,
+        remarks,
+      }, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const updatedRecords = selectedEmployeeAttendance[empId].map(rec =>
+        rec._id === recordId ? { ...rec, status, remarks } : rec
+      );
+      setSelectedEmployeeAttendance(prev => ({ ...prev, [empId]: updatedRecords }));
+      alert('Attendance updated');
+    } catch {
+      alert('Failed to update attendance');
+    }
+  };
+
+  const isToday = (dateStr) => {
+    const date = new Date(dateStr);
+    const today = new Date();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
   };
 
   return (
@@ -167,14 +189,14 @@ const createEmployee = async () => {
 
       {token && (
         <>
-          <div className="d-flex justify-content-between align-items-center">
+          <div className="d-flex justify-content-between align-items-center mb-3">
             <h5>Logged in as: <strong>{branchName}</strong></h5>
             <Button variant="danger" size="sm" onClick={logout}>Logout</Button>
           </div>
 
           <h5 className="mt-4">Employees</h5>
           <Accordion activeKey={activeEmployeeId}>
-            {employees.map((emp) => (
+            {employees.map(emp => (
               <Accordion.Item eventKey={emp._id} key={emp._id}>
                 <Accordion.Header onClick={() => viewAttendance(emp._id)}>
                   {emp.email}
@@ -184,29 +206,84 @@ const createEmployee = async () => {
                     <Button
                       size="sm"
                       className="mb-2"
-                      onClick={() => exportToExcel(selectedEmployeeAttendance[emp._id], `${emp.email}_attendance.xlsx`)}
+                      onClick={() =>
+                        exportToExcel(selectedEmployeeAttendance[emp._id], `${emp.email}_attendance.xlsx`)
+                      }
                     >
                       Download Attendance
                     </Button>
                   )}
-                  <Table striped bordered hover>
+                  <Table striped bordered hover size="sm">
                     <thead>
                       <tr>
                         <th>Date</th>
                         <th>Check In</th>
                         <th>Check Out</th>
+                        <th>Status</th>
+                        <th>Remarks</th>
                         <th>Total Hours</th>
+                        <th>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {(selectedEmployeeAttendance[emp._id] || []).map((rec, i) => (
-                        <tr key={i}>
-                          <td>{new Date(rec.date).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata" })}</td>
-                          <td>{rec.checkIn ? new Date(rec.checkIn).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }) : '—'}</td>
-                          <td>{rec.checkOut ? new Date(rec.checkOut).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata" }) : '—'}</td>
-                          <td>{rec.totalHours ? rec.totalHours.toFixed(2) : '—'}</td>
-                        </tr>
-                      ))}
+                      {(selectedEmployeeAttendance[emp._id] || []).map((rec, i) => {
+                        const editable = isToday(rec.date);
+                        return (
+                          <tr key={i}>
+                            <td>{new Date(rec.date).toLocaleDateString("en-IN")}</td>
+                            <td>{rec.checkIn ? new Date(rec.checkIn).toLocaleTimeString("en-IN") : '—'}</td>
+                            <td>{rec.checkOut ? new Date(rec.checkOut).toLocaleTimeString("en-IN") : '—'}</td>
+                            <td>
+                              {editable ? (
+                                <Form.Select
+                                  size="sm"
+                                  value={rec.status || ''}
+                                  onChange={(e) => {
+                                    const updated = [...selectedEmployeeAttendance[emp._id]];
+                                    updated[i].status = e.target.value;
+                                    setSelectedEmployeeAttendance(prev => ({ ...prev, [emp._id]: updated }));
+                                  }}
+                                >
+                                  <option value="On-time">On-time</option>
+                                  <option value="Week Off">Week Off</option>
+                                  <option value="Half-day">Half-day</option>
+                                  <option value="Late">Late</option>
+                                  <option value="Absent">Absent</option>
+                                 
+                              </Form.Select>
+                              ) : rec.status || '—'}
+                            </td>
+                            <td>
+                              {editable ? (
+                                <Form.Control
+                                  size="sm"
+                                  type="text"
+                                  value={rec.remarks || ''}
+                                  onChange={(e) => {
+                                    const updated = [...selectedEmployeeAttendance[emp._id]];
+                                    updated[i].remarks = e.target.value;
+                                    setSelectedEmployeeAttendance(prev => ({ ...prev, [emp._id]: updated }));
+                                  }}
+                                />
+                              ) : rec.remarks || '—'}
+                            </td>
+                            <td>{rec.totalHours ? rec.totalHours.toFixed(2) : '—'}</td>
+                            <td>
+                              {editable && (
+                                <Button
+                                  size="sm"
+                                  variant="success"
+                                  onClick={() =>
+                                    updateAttendance(emp._id, rec._id, rec.status, rec.remarks)
+                                  }
+                                >
+                                  Save
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </Table>
                 </Accordion.Body>
@@ -214,7 +291,7 @@ const createEmployee = async () => {
             ))}
           </Accordion>
 
-          <Form className="mb-4 mt-4">
+          <Form className="mt-4">
             <h5>Add New Branch</h5>
             <Form.Group className="mb-2">
               <Form.Label>Branch Name</Form.Label>
@@ -235,7 +312,7 @@ const createEmployee = async () => {
             <Button onClick={createBranch}>Create Branch</Button>
           </Form>
 
-          <Form className="mb-4">
+          <Form className="mt-4">
             <h5>Add New Employee</h5>
             <Form.Group className="mb-2">
               <Form.Label>Email</Form.Label>

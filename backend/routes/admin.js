@@ -9,7 +9,6 @@ const adminAuth = require('../middlewares/adminAuth'); // Admin JWT middleware
  const auth = require('../middlewares/auth'); // Employee JWT middleware
 // const { authenticateAdmin } = require('../middlewares/auth');
 
-// Admin Login
 router.post('/login', async (req, res) => {
   try {
     const { name, password } = req.body;
@@ -40,20 +39,20 @@ router.post('/login', async (req, res) => {
   }
 });
 
-//  router.put('/attendance/:id', authenticateAdmin, async (req, res) => {
-//    const { status, remarks } = req.body;
-//    try {
-//      const attendance = await Attendance.findByIdAndUpdate(
+//  router.put('/attendance/:id', adminAuth, async (req, res) => {
+//     const { status, remarks } = req.body;
+//     try {
+//       const attendance = await Attendance.findByIdAndUpdate(
 //       req.params.id,
-//       { status, remarks },
-//       { new: true }
-//      );
+//        { status, remarks },
+//        { new: true }
+//       );
 //      if (!attendance) return res.status(404).json({ message: 'Attendance not found' });
-//     res.json(attendance);
-//    } catch (err) {
-//      res.status(500).json({ message: 'Error updating attendance', error: err.message });
+//      res.json(attendance);
+//     } catch (err) {
+//       res.status(500).json({ message: 'Error updating attendance', error: err.message });
 //    }
-//  });
+//   });
 
 
 router.post('/register-branch', async (req, res) => {
@@ -150,5 +149,36 @@ router.get('/attendance/:employeeId', adminAuth, async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
+
+ router.put('/attendance/:id', async (req, res) => {
+   const { status, remarks } = req.body;
+
+   const allowedStatus = ['On-time','Week Off', 'Late', 'Absent', 'Half-day'];
+   if (status && !allowedStatus.includes(status)) {
+     return res.status(400).json({ error: 'Invalid status value' });
+   }
+
+   try {
+     const attendance = await Attendance.findById(req.params.id);
+     if (!attendance) {
+       return res.status(404).json({ message: 'Attendance record not found' });
+     }
+
+    // Update only if new values are provided
+     if (status) attendance.status = status;
+     if (remarks !== undefined) attendance.remarks = remarks;
+
+    await attendance.save();
+
+     res.json({
+       message: 'Attendance updated successfully',
+       attendance,
+     });
+   } catch (err) {
+     console.error('Error updating attendance:', err);
+     res.status(500).json({ message: 'Internal server error' });
+   }
+ });
+
 
 module.exports = router;

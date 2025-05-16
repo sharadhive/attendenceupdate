@@ -72,7 +72,7 @@ const EmployeePanel = () => {
       }
     } catch (err) {
       console.error('Error fetching attendance:', err);
-      setError('Failed to load attendance');
+      // setError('Failed to load attendance');
     }
   };
 
@@ -199,7 +199,9 @@ const EmployeePanel = () => {
                     <Col md={3}>
                       <strong>Date:</strong> {new Date(entry.date).toLocaleDateString()}<br />
                       <strong>In:</strong> {entry.checkIn ? new Date(entry.checkIn).toLocaleTimeString() : '-'}<br />
-                      <strong>Out:</strong> {entry.checkOut ? new Date(entry.checkOut).toLocaleTimeString() : '-'}
+                      
+                    <strong>Out:</strong> {entry.checkOut ? new Date(entry.checkOut).toLocaleTimeString() : '-'}<br />
+                       
                     </Col>
                     <Col md={3}>
                       <Image src={entry.checkInPhoto} alt="CheckIn" fluid rounded />
@@ -208,7 +210,9 @@ const EmployeePanel = () => {
                       <Image src={entry.checkOutPhoto} alt="CheckOut" fluid rounded />
                     </Col>
                     <Col md={3}>
-                      <strong>Total Hours:</strong> {entry.totalHours?.toFixed(2) || '-'}
+                      <strong>Total Hours:</strong> {entry.totalHours?.toFixed(2) || '-'}<br />
+                       <strong>Status:</strong> {entry.status || 'N/A'}<br />
+      <strong>Remark:</strong> {entry.remarks || 'N/A'}
                     </Col>
                   </Row>
                 </ListGroup.Item>

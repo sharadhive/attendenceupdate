@@ -6,6 +6,11 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const auth = require('../middlewares/auth');
 
+// Helper to get IST time
+const getISTTime = () => {
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+};
+
 // Employee Login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
@@ -24,9 +29,11 @@ router.post('/checkin', auth, async (req, res) => {
   const { photoUrl } = req.body;
   if (!photoUrl) return res.status(400).send('Photo URL is required');
 
-  const startOfDay = new Date();
+  const now = getISTTime();
+
+  const startOfDay = new Date(now);
   startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date();
+  const endOfDay = new Date(now);
   endOfDay.setHours(23, 59, 59, 999);
 
   const existing = await Attendance.findOne({
@@ -38,8 +45,8 @@ router.post('/checkin', auth, async (req, res) => {
 
   const attendance = new Attendance({
     employee: req.user._id,
-    date: new Date(),
-    checkIn: new Date(),
+    date: now,
+    checkIn: now,
     checkInPhoto: photoUrl,
   });
 
@@ -52,9 +59,11 @@ router.post('/checkout', auth, async (req, res) => {
   const { photoUrl } = req.body;
   if (!photoUrl) return res.status(400).send('Photo URL is required');
 
-  const startOfDay = new Date();
+  const now = getISTTime();
+
+  const startOfDay = new Date(now);
   startOfDay.setHours(0, 0, 0, 0);
-  const endOfDay = new Date();
+  const endOfDay = new Date(now);
   endOfDay.setHours(23, 59, 59, 999);
 
   const attendance = await Attendance.findOne({
@@ -66,7 +75,7 @@ router.post('/checkout', auth, async (req, res) => {
 
   if (attendance.checkOut) return res.status(400).send('Already checked out today');
 
-  attendance.checkOut = new Date();
+  attendance.checkOut = now;
   attendance.checkOutPhoto = photoUrl;
   attendance.totalHours = (attendance.checkOut - attendance.checkIn) / 3600000;
   await attendance.save();
@@ -74,13 +83,13 @@ router.post('/checkout', auth, async (req, res) => {
   res.send('Checked out successfully');
 });
 
-// ✅ View Employee's Attendance History
+// View Employee's Attendance History
 router.get('/attendance', auth, async (req, res) => {
   try {
     const records = await Attendance.find({ employee: req.user._id }).sort({ date: -1 });
     res.json(records);
   } catch (err) {
-    console.error('Error fetching attendance:', err);
+     console.error('Error fetching attendance:', err);
     res.status(500).send('Server error');
   }
 });
