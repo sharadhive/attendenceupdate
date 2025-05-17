@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
-import { Container, Form, Button, Table, Accordion } from 'react-bootstrap';
+import { Container, Form, Button, Table, Accordion, Image } from 'react-bootstrap';
 import * as XLSX from 'xlsx';
 
 function AdminPanel() {
@@ -165,6 +165,7 @@ function AdminPanel() {
     <Container className="p-4">
       <h2>Admin Panel</h2>
 
+      {/* Login Form */}
       {!token && (
         <Form className="mb-3">
           <Form.Group>
@@ -218,10 +219,12 @@ function AdminPanel() {
                       <tr>
                         <th>Date</th>
                         <th>Check In</th>
+                        <th>Break In</th>
+                        <th>Break Out</th>
                         <th>Check Out</th>
-                        <th>Status</th>
-                        <th>Remarks</th>
                         <th>Total Hours</th>
+                        <th>Status</th>
+                        <th>Remark</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
@@ -231,8 +234,11 @@ function AdminPanel() {
                         return (
                           <tr key={i}>
                             <td>{new Date(rec.date).toLocaleDateString("en-IN")}</td>
-                            <td>{rec.checkIn ? new Date(rec.checkIn).toLocaleTimeString("en-IN") : '—'}</td>
-                            <td>{rec.checkOut ? new Date(rec.checkOut).toLocaleTimeString("en-IN") : '—'}</td>
+                            <td>{rec.checkInPhoto && <Image src={rec.checkInPhoto} thumbnail width={30} />}<br/>{rec.checkIn && new Date(rec.checkIn).toLocaleTimeString("en-IN")}</td>
+                            <td>{rec.breakInPhoto && <Image src={rec.breakInPhoto} thumbnail width={30} />}<br/>{rec.breakIn && new Date(rec.breakIn).toLocaleTimeString("en-IN")}</td>
+                            <td>{rec.breakOutPhoto && <Image src={rec.breakOutPhoto} thumbnail width={30} />}<br/>{rec.breakOut && new Date(rec.breakOut).toLocaleTimeString("en-IN")}</td>
+                            <td>{rec.checkOutPhoto && <Image src={rec.checkOutPhoto} thumbnail width={30} />}<br/>{rec.checkOut && new Date(rec.checkOut).toLocaleTimeString("en-IN")}</td>
+                            <td>{rec.totalHours ? rec.totalHours.toFixed(2) : '—'}</td>
                             <td>
                               {editable ? (
                                 <Form.Select
@@ -249,8 +255,7 @@ function AdminPanel() {
                                   <option value="Half-day">Half-day</option>
                                   <option value="Late">Late</option>
                                   <option value="Absent">Absent</option>
-                                 
-                              </Form.Select>
+                                </Form.Select>
                               ) : rec.status || '—'}
                             </td>
                             <td>
@@ -267,7 +272,6 @@ function AdminPanel() {
                                 />
                               ) : rec.remarks || '—'}
                             </td>
-                            <td>{rec.totalHours ? rec.totalHours.toFixed(2) : '—'}</td>
                             <td>
                               {editable && (
                                 <Button

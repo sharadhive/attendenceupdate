@@ -14,15 +14,17 @@ const getISTTime = () => {
 // Employee Login
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
+  
   const employee = await Employee.findOne({ email });
   if (!employee) return res.status(400).send('Employee not found');
 
   const isValid = await bcrypt.compare(password, employee.password);
   if (!isValid) return res.status(400).send('Invalid password');
 
-  const token = jwt.sign({ _id: employee._id, role: 'employee' }, process.env.JWT_SECRET, { expiresIn: '1d' });
+  const token = jwt.sign({ _id: employee._id,email: employee.email, role: 'employee' }, process.env.JWT_SECRET, { expiresIn: '1d' });
   res.json({ token });
 });
+
 
 // Employee Check-In
 router.post('/checkin', auth, async (req, res) => {
@@ -82,6 +84,56 @@ router.post('/checkout', auth, async (req, res) => {
 
   res.send('Checked out successfully');
 });
+
+
+router.post('/breakin', auth, async (req, res) => {
+  const { photoUrl } = req.body;
+  const now = getISTTime();
+
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(now);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const attendance = await Attendance.findOne({ employee: req.user._id, date: { $gte: startOfDay, $lte: endOfDay } });
+  if (!attendance) return res.status(400).send('Check-in required first');
+  if (attendance.breakIn) return res.status(400).send('Already broken in');
+
+  attendance.breakIn = now;
+  if (photoUrl) attendance.breakInPhoto = photoUrl;
+
+  await attendance.save();
+  res.send('Break-in recorded');
+});
+
+
+router.post('/breakout', auth, async (req, res) => {
+  const { photoUrl } = req.body;
+  const now = getISTTime();
+
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(now);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const attendance = await Attendance.findOne({ employee: req.user._id, date: { $gte: startOfDay, $lte: endOfDay } });
+  if (!attendance) return res.status(400).send('Check-in required first');
+  if (!attendance.breakIn) return res.status(400).send('Break-in first');
+  if (attendance.breakOut) return res.status(400).send('Already broken out');
+
+  attendance.breakOut = now;
+  if (photoUrl) attendance.breakOutPhoto = photoUrl;
+
+  await attendance.save();
+  res.send('Break-out recorded');
+});
+
+
+
+
+
+
+
 
 // View Employee's Attendance History
 router.get('/attendance', auth, async (req, res) => {

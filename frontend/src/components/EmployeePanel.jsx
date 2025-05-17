@@ -1,3 +1,4 @@
+// Top imports unchanged
 import React, { useState, useEffect, useRef } from 'react';
 import { Container, Form, Button, Card, Row, Col, Alert, ListGroup, Image } from 'react-bootstrap';
 import Webcam from 'react-webcam';
@@ -9,19 +10,25 @@ const EmployeePanel = () => {
   const [password, setPassword] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [token, setToken] = useState(localStorage.getItem('employeeToken') || '');
+  const [employeeEmail, setEmployeeEmail] = useState('');
   const [attendance, setAttendance] = useState([]);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const webcamRef = useRef(null);
 
-  // Axios instance with token
+  // ✅ Simple and cross-browser friendly selfie camera constraints
+  const videoConstraints = {
+    width: { ideal: 640 },
+    height: { ideal: 480 },
+    facingMode: { ideal: 'user' }, // front-facing
+  };
+
   const getApi = () =>
     axios.create({
       baseURL: 'http://localhost:5000/api/employee',
       headers: { Authorization: `Bearer ${token}` },
     });
 
-  // Login
   const handleLogin = async () => {
     if (!email || !password) {
       setError('Please provide both email and password.');
@@ -33,6 +40,8 @@ const EmployeePanel = () => {
       const t = res.data.token;
       localStorage.setItem('employeeToken', t);
       setToken(t);
+      const payload = jwtDecode(t);
+      setEmployeeEmail(payload.email || '');
       setMessage('Login successful');
       setError('');
       fetchAttendance(t);
@@ -42,7 +51,6 @@ const EmployeePanel = () => {
     }
   };
 
-  // Decode token to get employee ID
   const getUserIdFromToken = (jwtToken) => {
     if (!jwtToken) return '';
     try {
@@ -54,7 +62,6 @@ const EmployeePanel = () => {
     }
   };
 
-  // Fetch attendance (uses employee route now)
   const fetchAttendance = async (jwt = token) => {
     if (!jwt) {
       setError('Invalid token');
@@ -63,7 +70,7 @@ const EmployeePanel = () => {
 
     try {
       const api = getApi();
-      const res = await api.get('/attendance'); // uses employee route
+      const res = await api.get('/attendance');
       if (res.data && res.data.length > 0) {
         setAttendance(res.data);
       } else {
@@ -72,11 +79,9 @@ const EmployeePanel = () => {
       }
     } catch (err) {
       console.error('Error fetching attendance:', err);
-      // setError('Failed to load attendance');
     }
   };
 
-  // Upload image to Cloudinary
   const uploadToCloudinary = async (imageData) => {
     const formData = new FormData();
     formData.append('file', imageData);
@@ -86,18 +91,21 @@ const EmployeePanel = () => {
     return res.data.secure_url;
   };
 
-  // Check-In
-  const captureAndCheckIn = async () => {
+  const captureImage = async () => {
     const imageSrc = webcamRef.current.getScreenshot();
-    const blob = await fetch(imageSrc).then(res => res.blob());
-
     if (!imageSrc) {
-      setError('Please capture a selfie before checking in.');
-      return;
+      setError('Failed to capture image');
+      return '';
     }
+    const blob = await fetch(imageSrc).then((res) => res.blob());
+    return await uploadToCloudinary(blob);
+  };
 
+  const captureAndCheckIn = async () => {
     try {
-      const uploadedUrl = await uploadToCloudinary(blob);
+      const uploadedUrl = await captureImage();
+      if (!uploadedUrl) return;
+
       const api = getApi();
       await api.post('/checkin', { photoUrl: uploadedUrl });
       setPhotoUrl(uploadedUrl);
@@ -111,18 +119,11 @@ const EmployeePanel = () => {
     }
   };
 
-  // Check-Out
   const captureAndCheckOut = async () => {
-    const imageSrc = webcamRef.current.getScreenshot();
-    const blob = await fetch(imageSrc).then(res => res.blob());
-
-    if (!imageSrc) {
-      setError('Please capture a selfie before checking out.');
-      return;
-    }
-
     try {
-      const uploadedUrl = await uploadToCloudinary(blob);
+      const uploadedUrl = await captureImage();
+      if (!uploadedUrl) return;
+
       const api = getApi();
       await api.post('/checkout', { photoUrl: uploadedUrl });
       setPhotoUrl(uploadedUrl);
@@ -136,16 +137,48 @@ const EmployeePanel = () => {
     }
   };
 
-  // Logout
+  const captureAndBreakIn = async () => {
+    try {
+      const uploadedUrl = await captureImage();
+      const api = getApi();
+      await api.post('/breakin', { photoUrl: uploadedUrl });
+      setMessage('Break in recorded');
+      setError('');
+      fetchAttendance();
+    } catch (err) {
+      console.error('Break in failed:', err);
+      setError(err.response?.data || 'Break in failed');
+      setMessage('');
+    }
+  };
+
+  const captureAndBreakOut = async () => {
+    try {
+      const uploadedUrl = await captureImage();
+      const api = getApi();
+      await api.post('/breakout', { photoUrl: uploadedUrl });
+      setMessage('Break out recorded');
+      setError('');
+      fetchAttendance();
+    } catch (err) {
+      console.error('Break out failed:', err);
+      setError(err.response?.data || 'Break out failed');
+      setMessage('');
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('employeeToken');
     setToken('');
     setAttendance([]);
+    setEmployeeEmail('');
     setMessage('Logged out');
   };
 
   useEffect(() => {
     if (token) {
+      const payload = jwtDecode(token);
+      setEmployeeEmail(payload.email || '');
       fetchAttendance();
     }
   }, [token]);
@@ -153,7 +186,9 @@ const EmployeePanel = () => {
   return (
     <Container className="my-4">
       <Card className="p-4 shadow">
-        <h2 className="mb-4">Employee Panel</h2>
+        <h2 className="mb-4">
+          Welcome {employeeEmail && ` - ${employeeEmail}`}
+        </h2>
 
         {!token && (
           <>
@@ -171,16 +206,24 @@ const EmployeePanel = () => {
 
         {token && (
           <>
+            {/* ✅ Working webcam preview */}
             <Webcam
               audio={false}
               ref={webcamRef}
               screenshotFormat="image/jpeg"
-              width="100%"
-              className="mb-3"
+              videoConstraints={videoConstraints}
+              style={{ width: '100%', borderRadius: '10px', marginBottom: '16px' }}
             />
+
             <Row className="mb-3">
               <Col>
                 <Button variant="success" onClick={captureAndCheckIn}>Check In with Selfie</Button>
+              </Col>
+              <Col>
+                <Button variant="warning" onClick={captureAndBreakIn}>Break In (optional photo)</Button>
+              </Col>
+              <Col>
+                <Button variant="info" onClick={captureAndBreakOut}>Break Out (optional photo)</Button>
               </Col>
               <Col>
                 <Button variant="danger" onClick={captureAndCheckOut}>Check Out with Selfie</Button>
@@ -195,24 +238,38 @@ const EmployeePanel = () => {
             <ListGroup>
               {attendance.map((entry) => (
                 <ListGroup.Item key={entry._id}>
-                  <Row>
-                    <Col md={3}>
-                      <strong>Date:</strong> {new Date(entry.date).toLocaleDateString()}<br />
-                      <strong>In:</strong> {entry.checkIn ? new Date(entry.checkIn).toLocaleTimeString() : '-'}<br />
-                      
-                    <strong>Out:</strong> {entry.checkOut ? new Date(entry.checkOut).toLocaleTimeString() : '-'}<br />
-                       
+                  <Row className="align-items-center">
+                    <Col md={9}>
+                      <div className="mb-2">
+                        <p><strong>Date:</strong> {new Date(entry.date).toLocaleDateString()}</p>
+                      </div>
+                      <div className="d-flex justify-content-between flex-wrap align-items-start gap-3 mb-2">
+                        <div className="text-center">
+                          <strong>Check In</strong><br />
+                          {entry.checkInPhoto && <Image src={entry.checkInPhoto} fluid rounded style={{ maxHeight: '130px' }} />}
+                          <div>{entry.checkIn ? new Date(entry.checkIn).toLocaleTimeString() : '-'}</div>
+                        </div>
+                        <div className="text-center">
+                          <strong>Check Out</strong><br />
+                          {entry.checkOutPhoto && <Image src={entry.checkOutPhoto} fluid rounded style={{ maxHeight: '130px' }} />}
+                          <div>{entry.checkOut ? new Date(entry.checkOut).toLocaleTimeString() : '-'}</div>
+                        </div>
+                        <div className="text-center">
+                          <strong>Break In</strong><br />
+                          {entry.breakInPhoto && <Image src={entry.breakInPhoto} fluid rounded style={{ maxHeight: '130px' }} />}
+                          <div>{entry.breakIn ? new Date(entry.breakIn).toLocaleTimeString() : '-'}</div>
+                        </div>
+                        <div className="text-center">
+                          <strong>Break Out</strong><br />
+                          {entry.breakOutPhoto && <Image src={entry.breakOutPhoto} fluid rounded style={{ maxHeight: '130px' }} />}
+                          <div>{entry.breakOut ? new Date(entry.breakOut).toLocaleTimeString() : '-'}</div>
+                        </div>
+                      </div>
                     </Col>
-                    <Col md={3}>
-                      <Image src={entry.checkInPhoto} alt="CheckIn" fluid rounded />
-                    </Col>
-                    <Col md={3}>
-                      <Image src={entry.checkOutPhoto} alt="CheckOut" fluid rounded />
-                    </Col>
-                    <Col md={3}>
-                      <strong>Total Hours:</strong> {entry.totalHours?.toFixed(2) || '-'}<br />
-                       <strong>Status:</strong> {entry.status || 'N/A'}<br />
-      <strong>Remark:</strong> {entry.remarks || 'N/A'}
+                    <Col md={3} className="text-end">
+                      <p><strong>Total Hours:</strong> {entry.totalHours?.toFixed(2) || '-'}</p>
+                      <p><strong>Status:</strong> {entry.status || 'N/A'}</p>
+                      <p><strong>Remark:</strong> {entry.remarks || 'N/A'}</p>
                     </Col>
                   </Row>
                 </ListGroup.Item>

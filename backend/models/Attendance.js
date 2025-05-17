@@ -9,8 +9,14 @@ const attendanceSchema = new mongoose.Schema({
   checkInPhoto: { type: String },
   checkOutPhoto: { type: String },
 
-  // ✅ New fields:
-  status: {
+
+
+  breakIn: { type: Date },
+  breakOut: { type: Date },
+  breakInPhoto: { type: String },
+  breakOutPhoto: { type: String },
+
+status: {
     type: String,
     enum: ['On-time','Week Off', 'Late', 'Absent', 'Half-day'],
     default: 'On-time',
