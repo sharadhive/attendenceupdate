@@ -163,9 +163,30 @@ function AdminPanel() {
 
   return (
     <Container className="p-4">
+      <style>
+     {`
+      .hover-enlarge {
+        cursor: pointer;
+        transition: transform 0.2s ease-in-out;
+        z-index: 1;
+      }
+
+      .hover-enlarge:hover {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 50vw;
+        height: 100vh;
+        object-fit: contain;
+        background-color: rgba(0, 0, 0, 0.85);
+        padding: 20px;
+        z-index: 9999;
+      }
+    `}
+      </style>
+
       <h2>Admin Panel</h2>
 
-      {/* Login Form */}
       {!token && (
         <Form className="mb-3">
           <Form.Group>
@@ -234,10 +255,10 @@ function AdminPanel() {
                         return (
                           <tr key={i}>
                             <td>{new Date(rec.date).toLocaleDateString("en-IN")}</td>
-                            <td>{rec.checkInPhoto && <Image src={rec.checkInPhoto} thumbnail width={30} />}<br/>{rec.checkIn && new Date(rec.checkIn).toLocaleTimeString("en-IN")}</td>
-                            <td>{rec.breakInPhoto && <Image src={rec.breakInPhoto} thumbnail width={30} />}<br/>{rec.breakIn && new Date(rec.breakIn).toLocaleTimeString("en-IN")}</td>
-                            <td>{rec.breakOutPhoto && <Image src={rec.breakOutPhoto} thumbnail width={30} />}<br/>{rec.breakOut && new Date(rec.breakOut).toLocaleTimeString("en-IN")}</td>
-                            <td>{rec.checkOutPhoto && <Image src={rec.checkOutPhoto} thumbnail width={30} />}<br/>{rec.checkOut && new Date(rec.checkOut).toLocaleTimeString("en-IN")}</td>
+                            <td>{rec.checkInPhoto && <Image src={rec.checkInPhoto} thumbnail width={30} className="hover-enlarge" />}<br />{rec.checkIn && new Date(rec.checkIn).toLocaleTimeString("en-IN")}</td>
+                            <td>{rec.breakInPhoto && <Image src={rec.breakInPhoto} thumbnail width={30} className="hover-enlarge" />}<br />{rec.breakIn && new Date(rec.breakIn).toLocaleTimeString("en-IN")}</td>
+                            <td>{rec.breakOutPhoto && <Image src={rec.breakOutPhoto} thumbnail width={30} className="hover-enlarge" />}<br />{rec.breakOut && new Date(rec.breakOut).toLocaleTimeString("en-IN")}</td>
+                            <td>{rec.checkOutPhoto && <Image src={rec.checkOutPhoto} thumbnail width={30} className="hover-enlarge" />}<br />{rec.checkOut && new Date(rec.checkOut).toLocaleTimeString("en-IN")}</td>
                             <td>{rec.totalHours ? rec.totalHours.toFixed(2) : '—'}</td>
                             <td>
                               {editable ? (

@@ -20,7 +20,7 @@ const EmployeePanel = () => {
   const videoConstraints = {
     width: { ideal: 640 },
     height: { ideal: 480 },
-    facingMode: { ideal: 'user' }, // front-facing
+    facingMode: { ideal: 'user' }, 
   };
 
   const getApi = () =>
