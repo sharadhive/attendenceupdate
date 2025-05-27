@@ -251,7 +251,8 @@ function AdminPanel() {
                     </thead>
                     <tbody>
                       {(selectedEmployeeAttendance[emp._id] || []).map((rec, i) => {
-                        const editable = isToday(rec.date);
+                        // const editable = isToday(rec.date);  
+                                                const editable = true; 
                         return (
                           <tr key={i}>
                             <td>{new Date(rec.date).toLocaleDateString("en-IN")}</td>
