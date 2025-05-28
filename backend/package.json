@@ -10,11 +10,7 @@
     "dev": "nodemon index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-    "engines": {
-    "node": "18.x"
-  },
-
-  "dependencies": {
+ "dependencies": {
     "backend": "file:",
     "bcryptjs": "^3.0.2",
     "cloudinary": "^2.6.1",
